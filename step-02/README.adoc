@@ -1,0 +1,89 @@
+= Step 2 : Testing
+
+The first step is to add JUnit and Vert.x's Unit Testing support.  Open the pom.xml and add the following just below the vertx-core dependency (line 33):
+
+[source,xml]
+```
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-unit</artifactId>
+        </dependency>
+```
+
+NOTE: What about JUnit 5?  The vertx-junit5 library makes asynchronous testing easy and integrates easily with any assertion library.  We will see some of this later today. 
+
+Create a new package in the test folder with the same name as the package containing MainVerticle ("io.vertx.example" if you accepted Maven's prompts on generation.)
+
+Create a new Java class named "MainVertilceTest" or something equally creative.  Type the following content:
+
+[source, java]
+```
+package io.vertx.example;
+
+import io.vertx.core.Vertx;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+@RunWith(VertxUnitRunner.class)                                                  \\1
+public class MyFirstVerticleTest {
+
+    private Vertx vertx;                                                         \\2
+
+    @Before
+    public void setUp(TestContext context) {                                     \\3
+        vertx = Vertx.vertx();
+        vertx.deployVerticle(MainVerticle.class.getName(),
+                context.asyncAssertSuccess());
+    }
+
+    @After
+    public void tearDown(TestContext context) {                                  \\4
+        vertx.close(context.asyncAssertSuccess());
+    }
+
+    @Test
+    public void testMyApplication(TestContext context) {
+        final Async async = context.async();                                     \\5
+
+        vertx.createHttpClient().getNow(8080, "localhost", "/",
+                response -> {
+                    response.handler(body -> {
+                        context.assertTrue(body.toString().contains("Hello"));
+                        async.complete();                                         \\6
+                    });
+                });
+    }
+}
+```
+
+. @RunWith applies the Vert.x VertxUnitRunner.  A JUnit runner for writing asynchronous tests. Note : a runner is needed because when a rule statement is evaluated, it will run the before/test/after method and then test method is executed even if there are pending Async objects in the before method. The runner gives this necessary fine grained control.
+. an instance of Vertx to use in our test
+. JUnit's "setUp" method that in this class instantiates Vert.x and deploys our MainVerticle.java
+. JUnit's "tearDown" method that stops vertx and cleans up the TestContext.  The test context is used for performing test assertions and manage the completion of the test. This context is provided by vertx-unit as argument of the test case.
+. Async is an asynchronous exit point for the test.  It lets JUnit know when the test is actually complete.
+. async.complete() tells JUnit that we have finished our test
+
+Run your test either in your IDE or in a terminal.  If you don't see something like the following or something green raise your hand and ask one of the Red Hat guys for help:
+
+```
+-------------------------------------------------------
+ T E S T S
+-------------------------------------------------------
+Running io.vertx.example.MainVerticleTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.729 sec
+
+Results :
+
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+```
