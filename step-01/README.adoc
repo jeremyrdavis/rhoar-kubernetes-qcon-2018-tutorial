@@ -1,2 +1,5 @@
 = Step 1 : Download and Install Eclipse Vert.x
-https://vertx.io/download/
+
+As you may have guessed Vert.x can be downloaded from the official site: https://vertx.io/download
+
+https://vertx.io is a great resource.  The documentation is quite good, and there are multiple tutorials and 2 complete books available as pdfs "A gentle guide to asynchronous programming with Eclipse Vert.x for Java developers" and "Building Reactive Microservices in Java"
