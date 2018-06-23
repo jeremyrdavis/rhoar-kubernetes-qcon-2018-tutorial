@@ -1,6 +1,6 @@
 = Step 3 : Create a new project
 
-=== 3.1 Create a Vert.x project
+=== 3.1 Create a Vert.x Project
 First things first create a new directory for your work.  If you are using Windows you should probably create a folder directly on the C drive to prevent any weirdness that could arise from path names.
 
 From inside that directory run the following maven command :
@@ -45,3 +45,12 @@ After the POM file has been created, we will need to add some additional librari
 To save time there is a complete pom.xml in this directory.  Copy and paste the pom.xml into your dirctory.  We will look at the specific additions as we use them in the tutorial.
 
 link:pom.xml [Open the pom.xml]
+
+=== 3.3 Add Your New Project To GitHub
+
+```
+$ git init
+$ git add pom.xml src
+$ git commit -am 'Initial import'
+$ git push origin master
+```
