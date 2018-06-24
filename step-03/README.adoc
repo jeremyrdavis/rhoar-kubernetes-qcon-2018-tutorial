@@ -1,38 +1,11 @@
-= Step 3 : Create a new project
+= Step 3 : Creating a Vert.x Service
 
-=== 3.1 Create a Vert.x Project
-First things first create a new directory for your work.  If you are using Windows you should probably create a folder directly on the C drive to prevent any weirdness that could arise from path names.
-
-From inside that directory run the following maven command :
-
-```
-mvn io.fabric8:vertx-maven-plugin:1.0.13:setup -DvertxVersion=3.5.1 
-[INFO] Scanning for projects...
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] Building Maven Stub Project (No POM) 1
-[INFO] ------------------------------------------------------------------------
-[INFO]
-[INFO] --- vertx-maven-plugin:1.0.13:setup (default-cli) @ standalone-pom ---
-[INFO] No pom.xml found, creating it in /home/dphillips/Documents/RedHat/Workspace/rhoar-kubernetes-qcon-2018/insult-service
-Set the project groupId [io.vertx.example]: com.redhat.qcon
-Set the project artifactId [my-vertx-project]: insult-service
-Set the project version [1.0-SNAPSHOT]: 1.0.0-SNAPSHOT
-Set the vertcile class name [MainVerticle]:
-[INFO] Creating verticle MainVerticle
-[INFO] Creating directory /home/dphillips/Documents/RedHat/Workspace/rhoar-kubernetes-qcon-2018/insult-service/src/main/java/com/redhat/qcon
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time: 34.510 s
-[INFO] Finished at: 2018-05-21T12:07:46-04:00
-[INFO] Final Memory: 9M/166M
-[INFO] ------------------------------------------------------------------------
-```
-This will create a new Maven POM file populated based on the values you entered during the setup.
+=== 3.1 Update Our "Hello, World" Project
+It's time to get some real work done and start returning insults.  
+We will add a Service to our existing, skeletal application that calls two existing microservices: one that returns nouns and one that returns adjectives.
 
 === 3.2 Update pom.xml
-After the POM file has been created, we will need to add some additional libraries for this microservice:
+We will need to add some additional libraries for this microservice:
 
 * vertx-web-api-contract
 * vertx-rx-java2
@@ -56,7 +29,9 @@ $ git push origin master
 ```
 === 3.4 Get Ready to Test
 
-We've already used Vert.x' JUnit-compatible library vertx-unit.  Personally, we prefer BDD style tests, so for this workshop and will be using the SpockFramework.   The Spock dependencies have already been added to our POM.
+We will be following the RED-GREEN-REFACTOR pattern of Test Driven Development.  We've already used Vert.x' JUnit-compatible library vertx-unit.  
+
+Personally, we prefer BDD style tests, so for this workshop and will be using the SpockFramework.   The Spock dependencies have already been added to our POM but are listed below so that you can familiarize yourself with them.
 
 ```
 <!-- Optional dependencies for using Spock -->
@@ -128,9 +103,21 @@ We have also added the gmavenx-plugin required by the SpockFramework and added t
     </executions>
 </plugin>
 ```
-=== 3.5 Our First Test
+=== 3.5 Requirements 
 
-Our first step will be to verify that our application starts up.
+Our service will call two other microservices so it will need to know where the noun and adjective services are located.  Our service also needs to know where to serve its' own results.
+
+Following one of the tenets of 12 Factor Applications, we will want to store our application’s configuration in the deployment environment instead of in our code. Vert.x makes this easy painless by providing a comprehensive set of APIs for loading the application’s configuration. 
+
+In our case, we are going load our configuration from three possible locations: 
+
+* a default set of parameters packaged with the application
+* an external location within the Docker container
+* in Kubernetes by using Kubernetes ConfigMaps
+
+So our first step will be to implement the necessary configuration for our service so our first test will verify that the configuration exists.
+
+==== 3.5.1 Write a Test
 
 . Create a folder "groovy" under src/test
 . Create a package structure "com.redhat.qcon.insult."
@@ -185,20 +172,118 @@ mvn clean test
 
 The test should fail beacuase our MainVerticle already doing enought to pass.  If your test doesn't pass raise your hand and ask one of the Red Hat guys for help.
 
-=== 3.6 Write a New Test
+=== 3.6 Passing the Test
 
-Let's add a check to verify the content returned by our server.  Add the following to line 29 just below the other "assert" statements:
+==== 3.6.1 Create the Default Configuration
 
-[source, javascript]
+Let's create a file to store our default configuration.  Create a new file: "insult_default_config.json" in the "src/main/resources" directory.  Add the following content:
+
+[source, json]
 ```
-assert res.result().toString().equalsIgnoreCase("Insult Service")
+{
+  "noun": {
+    "host": "noun-service",
+    "port": 80
+  },
+  "adjective": {
+    "host": "adjective-service",
+    "port": 80
+  },
+  "http": {
+    "address": "0.0.0.0",
+    "port": 8080
+  }
+}
 ```
-Run the test with 
+
+[source, java]
+```
+package com.redhat.qcon;
+
+import io.reactivex.Maybe;
+import io.vertx.config.ConfigRetrieverOptions;
+import io.vertx.config.ConfigStoreOptions;
+import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
+import io.vertx.reactivex.config.ConfigRetriever;
+import io.vertx.reactivex.core.AbstractVerticle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class MainVerticle extends AbstractVerticle {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
+
+    Maybe<JsonObject> initConfigRetriever() {                                   // (1)
+        // Load the default configuration from the classpath
+        LOG.info("Configuration store loading.");
+        ConfigStoreOptions defaultOpts = new ConfigStoreOptions()               // (2)
+                .setType("file")
+                .setFormat("json")
+                .setConfig(new JsonObject().put("path", "insult_default_config.json"));
+
+        // Load container specific configuration from a specific file path inside of the
+        // container
+        ConfigStoreOptions localConfig = new ConfigStoreOptions()               // (3)
+                .setType("file")
+                .setFormat("json")
+                .setConfig(new JsonObject().put("path", "/opt/docker_config.json"))
+                .setOptional(true);
+
+        // When running inside of Kubernetes, configure the application to also load from
+        // a ConfigMap
+        ConfigStoreOptions confOpts = new ConfigStoreOptions()                  // (4)
+                .setType("configmap")
+                .setConfig(new JsonObject()
+                        .put("name", "insult-config")
+                        .put("optional", true)
+                );
+
+        // Add the default and container config options into the ConfigRetriever
+        ConfigRetrieverOptions retrieverOptions = new ConfigRetrieverOptions()  // (5)
+                .addStore(defaultOpts)
+                .addStore(localConfig)
+                .addStore(confOpts);
+
+        // Create the ConfigRetriever and return the Maybe when complete
+        return ConfigRetriever.create(vertx, retrieverOptions)
+                              .rxGetConfig()
+                              .toMaybe();                                       // (6)
+    }
+
+    @Override
+    public void start(Future<Void> startFuture) {
+
+        initConfigRetriever()                                                   // (7)
+                .doOnError(startFuture::fail)                                   // (8)
+                .subscribe(c -> {
+                    LOG.info(c.encodePrettily());
+                    context.config().mergeIn(c);                                // (9)
+                    startFuture.complete();                                     // (10)
+                });
+    }
+}
+```
+. Let's take a look at what this test is checking:
+. Define a new method which returns a Single with the configuration
+. Create an instance of ConfigStoreOptions to load the default config from the classpath
+. Create an instance of ConfigStoreOptions to load configuration data from inside a Docker container
+. Create an instance of ConfigStoreOptions to load configuration data from Kubernetes ConfigMaps
+. Attach the ConfigStoreOptions to the ConfigRetrieverOptions
+. Return the RxJava2 Maybe which may be completed at a later time
+. From inside of the start method, call initConfigRetriever
+. Set an error handler for the Single which will fail the Verticle deployment when an error is encountered
+. Merge the loaded configuration into the global Vert.x configuration
+. Complete the startFuture successfully
+
+Re-run the test with 
 
 ```
 mvn clean test
 ```
 
-The test should fail beacuase our MainVerticle is not returning the appropriate text.  If your test passes raise your hand and ask one of the Red Hat guys for help.  
+The test should now pass.  If your test fails raise your hand and ask one of the Red Hat guys for help.  
 
 NOTE: If you are running the test in an IDE you may have to rerun the test from the MainVerticleSpec.groovy file.
+
+

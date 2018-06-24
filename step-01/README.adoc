@@ -5,6 +5,8 @@ As you may have guessed Vert.x can be downloaded from the official site: https:/
 * Create a new folder for your project named, "insult-service."
 * From inside your new folder open a terminal and run:
 
+NOTE:   If you are using Windows you should probably create a folder directly on the C drive to prevent any weirdness that could arise from path names.
+
 ```
 mvn io.fabric8:vertx-maven-plugin:1.0.13:setup -DvertxVersion=3.5.1
 ```
