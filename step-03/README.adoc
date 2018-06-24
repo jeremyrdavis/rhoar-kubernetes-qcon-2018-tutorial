@@ -183,7 +183,7 @@ Run the test with
 mvn clean test
 ```
 
-The test should pass beacuase our MainVerticle is already doing enought to pass.  If your test doesn't pass raise your hand and ask one of the Red Hat guys for help.
+The test should fail beacuase our MainVerticle already doing enought to pass.  If your test doesn't pass raise your hand and ask one of the Red Hat guys for help.
 
 === 3.6 Write a New Test
 

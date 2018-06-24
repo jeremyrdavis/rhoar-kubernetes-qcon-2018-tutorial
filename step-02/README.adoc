@@ -20,7 +20,7 @@ NOTE: What about JUnit 5?  The vertx-junit5 library makes asynchronous testing e
 
 Create a new package in the test folder with the same name as the package containing MainVerticle ("io.vertx.example" if you accepted Maven's prompts on generation.)
 
-Create a new Java class named "MainVertilceTest" or something equally creative.  Type the following content:
+Create a new Java class named "MainVerticleTest" or something equally creative.  Type the following content:
 
 [source, java]
 ```
