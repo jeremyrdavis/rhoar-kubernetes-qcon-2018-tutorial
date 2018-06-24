@@ -187,3 +187,18 @@ The test should pass beacuase our MainVerticle is already doing enought to pass.
 
 === 3.6 Write a New Test
 
+Let's add a check to verify the content returned by our server.  Add the following to line 29 just below the other "assert" statements:
+
+[source, javascript]
+```
+assert res.result().toString().equalsIgnoreCase("Insult Service")
+```
+Run the test with 
+
+```
+mvn clean test
+```
+
+The test should fail beacuase our MainVerticle is not returning the appropriate text.  If your test passes raise your hand and ask one of the Red Hat guys for help.  
+
+NOTE: If you are running the test in an IDE you may have to rerun the test from the MainVerticleSpec.groovy file.
