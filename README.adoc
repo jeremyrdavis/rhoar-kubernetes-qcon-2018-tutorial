@@ -1,3 +1,8 @@
-Steps
+= Overview
 
-. 1 
+== Steps
+
+. First steps with Eclipse Vert.x
+. Test First
+. Creating a Vert.x Service
+. Creating a ServiceProxy for our calls
