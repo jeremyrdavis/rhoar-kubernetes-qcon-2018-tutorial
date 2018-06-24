@@ -2,9 +2,8 @@
 
 As you may have guessed Vert.x can be downloaded from the official site: https://vertx.io/download.  But you don't need to download Vert.x: Maven or Gradle will take of that for you.  The easiest way to get started with Eclipse Vert.x is create a project.
 
-Create a new folder for your project with a name of your choosing.  In case you need some ideas, "qcon-awesomeness," "vertx-rules," and "iheartnyc" will do.
-
-From inside your new folder open a terminal and run:
+* Create a new folder for your project named, "insult-service."
+* From inside your new folder open a terminal and run:
 
 ```
 mvn io.fabric8:vertx-maven-plugin:1.0.13:setup -DvertxVersion=3.5.1
