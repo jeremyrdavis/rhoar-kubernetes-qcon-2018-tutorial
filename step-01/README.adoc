@@ -178,5 +178,11 @@ You should get the same message as before, but the result is more fun.  Open a b
 
 image::hello_from_my_first_vertx_3_application.png[]
 
+To stop Vert.x type:
+
+```
+ctrl + c
+```
+
 If you see something else (and didn't change the text on your own) ask one of the Red Hat guys for help.
 
