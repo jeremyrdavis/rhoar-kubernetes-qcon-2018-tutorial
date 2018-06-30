@@ -112,6 +112,5 @@ The Vert.x extension does 2 important things:
 . The @Timeout annotation will force our test to fail after a specified time (surprise, surprise.)  It is a good idea to add a timeout when testing asynchronous code
 . Tests should always fail first just so that you know the test is actually catching failing conditions.  Our cycle is "RED, GREEN, REFACTOR," so we need to start with red.
 
-Run your test either in your IDE or in a terminal.  If you don't see something like the following or something green raise your hand and ask one of the Red Hat guys for help:
+Run your test either in your IDE or in a terminal.  If your tests passes raise your hand and ask one of the Red Hat guys for help:
 
-```
