@@ -10,7 +10,7 @@ From inside your new folder open a terminal and run:
 mvn io.fabric8:vertx-maven-plugin:1.0.13:setup -DvertxVersion=3.5.1
 ```
 
-You will be prompted to fill the GAV information.  You can accept the defaults or choose your own.
+You will be prompted to fill the GAV information.  You can accept the defaults package, but name the application, "insult-service."  The version number "1.0.0-SNAPSHOT" is fine.
 
 ```
 [INFO] Scanning for projects...
@@ -98,7 +98,7 @@ You are now ready to run Eclipse Vert.x.
 Run the shiny, new jar file from the terminal:
 
 ```
-java -jar ./target/my-vertx-project-1.0-SNAPSHOT.jar
+java -jar ./target/insult-service-1.0-SNAPSHOT.jar
 ```
 
 You should see the following output:
