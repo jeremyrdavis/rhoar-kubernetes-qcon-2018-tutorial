@@ -1,22 +1,72 @@
 = Step 2 : Testing
 
-The first step is to add JUnit and Vert.x's Unit Testing support.  Open the pom.xml and add the following just below the vertx-core dependency (line 33):
+The first step is to add JUnit and Vert.x's Unit Testing support.  
+First open the pom.xml and add the following version numbers to the <properties> section of the pom (below line 16): 
+
+[source,xml]
+```
+        <!-- Unit testing -->
+        <junit-jupiter.version>5.1.0</junit-jupiter.version>
+        <maven-surefire-plugin.version>2.19</maven-surefire-plugin.version>
+        <junit-platform-surefire-provider.version>1.0.1</junit-platform-surefire-provider.version>
+        <assertj-core.version>3.8.0</assertj-core.version>
+```
+
+Second add the actual dependencies just below the vertx-core dependency (line 39):
 
 [source,xml]
 ```
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web-client</artifactId>
+        </dependency>
+        <!-- testing -->
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-junit5</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit-jupiter.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-unit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj-core.version}</version>
+            <scope>test</scope>
         </dependency>
 ```
 
-NOTE: What about JUnit 5?  The vertx-junit5 library makes asynchronous testing easy and integrates easily with any assertion library.  We will see some of this later today. 
+Being an astute student you noticed that we added the "vertx-web-client" dependency, the "vertx-junit5" dependency, 3 JUnit dependencies, and an AssertJ dependency.
+
+You can probably guess what "vertx-web-client" and "vertx-junit5" do.
+
+JUnit5 is a big change from the previous versions, and contains a lot of new functionality.  If you haven't had a chance to use it yet there are many good tutorials available online.  The official user guide is also quite good:
+https://junit.org/junit5/
+
+AssertJ, http://joel-costigliola.github.io/assertj/, offers fluent assertions for Java.  It allows us to write tests with syntax like:
+
+[source,java]
+```
+// chaining string specific assertions
+assertThat(frodo.getName()).startsWith("Fro")
+                           .endsWith("do")
+                           .isEqualToIgnoringCase("frodo");
+```
 
 Create a new package in the test folder with the same name as the package containing MainVerticle ("io.vertx.example" if you accepted Maven's prompts on generation.)
 
@@ -27,52 +77,41 @@ Create a new Java class named "MainVertilceTest" or something equally creative. 
 package io.vertx.example;
 
 import io.vertx.core.Vertx;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.codec.BodyCodec;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.Timeout;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-@RunWith(VertxUnitRunner.class)                                                  \\1
-public class MyFirstVerticleTest {
+import java.util.concurrent.TimeUnit;
 
-    private Vertx vertx;                                                         \\2
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-    @Before
-    public void setUp(TestContext context) {                                     \\3
-        vertx = Vertx.vertx();
-        vertx.deployVerticle(MainVerticle.class.getName(),
-                context.asyncAssertSuccess());
-    }
+@DisplayName("Test the functionality of the MainVerticle class")          //1
+@ExtendWith(VertxExtension.class)                                         //2
+public class MainVerticleTest {
 
-    @After
-    public void tearDown(TestContext context) {                                  \\4
-        vertx.close(context.asyncAssertSuccess());
-    }
+  @Test                                                                   //3
+  @Timeout(value = 5, timeUnit = TimeUnit.SECONDS)                        //4
+  @DisplayName("Deploy the MainVerticle and verify the response")
+  void testMainVerticle(Vertx vertx, VertxTestContext testContext) {      //5
+    assertTrue(false);                                                    //6
 
-    @Test
-    public void testMyApplication(TestContext context) {
-        final Async async = context.async();                                     \\5
+  }
 
-        vertx.createHttpClient().getNow(8080, "localhost", "/",
-                response -> {
-                    response.handler(body -> {
-                        context.assertTrue(body.toString().contains("Hello"));
-                        async.complete();                                         \\6
-                    });
-                });
-    }
 }
 ```
-
-. @RunWith applies the Vert.x VertxUnitRunner.  A JUnit runner for writing asynchronous tests. Note : a runner is needed because when a rule statement is evaluated, it will run the before/test/after method and then test method is executed even if there are pending Async objects in the before method. The runner gives this necessary fine grained control.
-. an instance of Vertx to use in our test
-. JUnit's "setUp" method that in this class instantiates Vert.x and deploys our MainVerticle.java
-. JUnit's "tearDown" method that stops vertx and cleans up the TestContext.  The test context is used for performing test assertions and manage the completion of the test. This context is provided by vertx-unit as argument of the test case.
-. Async is an asynchronous exit point for the test.  It lets JUnit know when the test is actually complete.
-. async.complete() tells JUnit that we have finished our test
+. @DisplayName is a new JUnit5 annotation 
+. @ExtendWith replaces the JUnit 4.x @RunWith annotation.  We need to extend the basic JUnit functionality to account for Vert.x' asynchronous nature
+. @Test this tells Maven to run this method as part of the tests
+. It is useful to add a timeout to asynchronous testing.  Asynchronous testing can be difficult at first, and timing out tests prevents potential frustration especially when getting started
+. We pass in an instance of Vertx and VertxTestContext.  Both of these objects are handled by the VertxExtension class
+. It is a good idea to fail a test first just to make sure it works.  We will add real functionality in a moment
 
 Run your test either in your IDE or in a terminal.  If you don't see something like the following or something green raise your hand and ask one of the Red Hat guys for help:
 
@@ -81,9 +120,52 @@ Run your test either in your IDE or in a terminal.  If you don't see something l
  T E S T S
 -------------------------------------------------------
 Running io.vertx.example.MainVerticleTest
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.729 sec
+Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.244 sec <<< FAILURE! - in io.vertx.example.MainVerticleTest
+testMainVerticle(Vertx, VertxTestContext)  Time elapsed: 0.186 sec  <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+	at io.vertx.example.MainVerticleTest.testMainVerticle(MainVerticleTest.java:27)
+
 
 Results :
 
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+Failed tests:
+  MainVerticleTest.testMainVerticle:27 expected: <true> but was: <false>
+
+Tests run: 1, Failures: 1, Errors: 0, Skipped: 0
 ```
+
+If our test fails then everything is working.  If your test passes ask one of the Red Hat guys for help!
+
+Replace the assertTrue(false) nonsense with the following:
+
+[source,java]
+----
+    WebClient webClient = WebClient.create(vertx);                              //1
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();                 //2
+    Checkpoint responseCheckpoint = testContext.checkpoint();                   //3
+
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {     //4
+      deploymentCheckpoint.flag();                                              //5
+
+      webClient.get(8080, "localhost", "/")                                     //6
+        .as(BodyCodec.string())
+        .send(testContext.succeeding(resp -> {                                  //7
+          testContext.verify(() -> {                                            //8
+            assertThat(resp.statusCode()).isEqualTo(200);
+            assertThat(resp.body()).contains(
+                "Hello from my first Vert.x application!");
+            responseCheckpoint.flag();                                          //9
+          });
+        }));
+    }));
+
+----
+This test:
+
+- deploys our MainVerticle
+- calls "http://localhost:8080"
+- verifies that the call to localhost returns "Hello from my first Vert.x application"
+
+. We create a Vert.x WebClient so that we can call our server
+. We create 2 Checkpoint objects.  A Checkpoint is a Vert.x JUnit class that prevents the test from completing until the checkpoints are met.  There are many cases when the success of a test depends on multiple asynchronous events to be validated.  Using Checkpoints allows us to flag the execution points to be passed. A Checkpoint can require a single flag or multiple flags. When all Checkpoints have been flagged, then the corresponding VertxTestContext completes the test.
+
