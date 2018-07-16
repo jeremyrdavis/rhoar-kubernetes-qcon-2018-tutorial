@@ -1,0 +1,19 @@
+= Outline
+
+== Step 01 : First Steps
+First steps with Eclipse Vert.x:
+
+. Generate an Eclipse Vert.x project from a Maven artefact
+. Modify the project to spin up a web server and return plain text
+
+== Step 02 : Test First
+. Add JUnit 5 and the Vert.x JUnit 5 library to the project
+. Create a reactive JUnit 5 test with AssertJ and Vert.x JUnit 5 support
+
+== Step 03 : First Insult/Endpoint
+. Add a JUnit 5 test method for the "/insult" Endpoint
+. Create an Eclipse Vert.x Router and stub out the "/insult" endpoint
+
+== Step 04
+
+== Step 05
