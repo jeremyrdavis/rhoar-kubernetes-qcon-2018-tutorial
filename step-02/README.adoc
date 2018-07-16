@@ -140,32 +140,52 @@ Replace the assertTrue(false) nonsense with the following:
 
 [source,java]
 ----
-    WebClient webClient = WebClient.create(vertx);                              //1
-    Checkpoint deploymentCheckpoint = testContext.checkpoint();                 //2
-    Checkpoint responseCheckpoint = testContext.checkpoint();                   //3
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();                 //1
 
-    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {     //4
-      deploymentCheckpoint.flag();                                              //5
-
-      webClient.get(8080, "localhost", "/")                                     //6
-        .as(BodyCodec.string())
-        .send(testContext.succeeding(resp -> {                                  //7
-          testContext.verify(() -> {                                            //8
-            assertThat(resp.statusCode()).isEqualTo(200);
-            assertThat(resp.body()).contains(
-                "Hello from my first Vert.x application!");
-            responseCheckpoint.flag();                                          //9
-          });
-        }));
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {     //2
+      deploymentCheckpoint.flag();                                              //3
     }));
 
 ----
-This test:
+This test isn't doing much, but it is the basis for our real work.
 
-- deploys our MainVerticle
-- calls "http://localhost:8080"
-- verifies that the call to localhost returns "Hello from my first Vert.x application"
+. We create a Checkpoint objects.  A Checkpoint is a Vert.x JUnit class that prevents the test from completing until the checkpoints are met.  Checkpoints are important because much of the work will be done in another thread, and the JUnit class can complete before the other threads.
+. We deploy the MainVerticle and pass in a callback that assumes success.
 
-. We create a Vert.x WebClient so that we can call our server
-. We create 2 Checkpoint objects.  A Checkpoint is a Vert.x JUnit class that prevents the test from completing until the checkpoints are met.  There are many cases when the success of a test depends on multiple asynchronous events to be validated.  Using Checkpoints allows us to flag the execution points to be passed. A Checkpoint can require a single flag or multiple flags. When all Checkpoints have been flagged, then the corresponding VertxTestContext completes the test.
+Run your test either in your IDE or in a terminal.  This time the test should pass.  Ask the Red Hat guys for help if it doesn't.
 
+Now its time to add some real functionality.  The code below contains the entire test method.  Update your class with the additional code and re-run your test.
+
+[source, java]
+----
+  @Test
+  @Timeout(value = 5, timeUnit = TimeUnit.SECONDS)
+  @DisplayName("Deploy the MainVerticle and verify the response")
+  void testMainVerticle(Vertx vertx, VertxTestContext testContext) {
+
+    WebClient webClient = WebClient.create(vertx);                              //1
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();                 
+    Checkpoint responseCheckpoint = testContext.checkpoint();                   //2
+
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+      deploymentCheckpoint.flag();
+
+      webClient.get(8080, "localhost", "/")                                     //3
+        .as(BodyCodec.string())                                                 //4
+        .send(testContext.succeeding(resp -> {
+          testContext.verify(() -> {                                            //5
+            assertThat(resp.statusCode()).isEqualTo(200);                       //6
+            assertThat(resp.body()).contains(                                   //7
+                "Hello from my first Vert.x application!");
+            responseCheckpoint.flag();                                          //8
+          });
+        }));
+    }));
+  }
+----  
+. We create a Vert.x WebClient to call our verticle. Vert.x' WebClient is used to call external URL's, and it makes a great testing tool.  We call WebClient's get() method passing in the host and port, which as you probably geussed performs a get request on the supplied URL
+. We tell the client to treat the body as a string
+. We call the WebClient's send() method passing in a callback that expects success
+. We call the VertxTestContext verify() method to check our Response
+. We verify the Response' status code
+. We verify that the Response contains the expected text
