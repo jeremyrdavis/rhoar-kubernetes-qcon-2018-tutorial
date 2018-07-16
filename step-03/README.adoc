@@ -1,0 +1,283 @@
+= Step 3 : First Insult
+
+== Create a New Test
+Create a new test class, InsultEndpointTest, in the same directory as MainVerticleTest, "test/io/vertx/example."
+
+If you are feeling confident add code to :
+. use the Vertx JUnit 5 Extension
+. implement a test method that will always fail (Red, Green, Refactor)
+. set the test method to timeout after 5 seconds
+
+You can check your code in the below example.
+
+If you aren't feeling confident yet you can copy the example:
+
+[source,java]
+----
+import io.vertx.junit5.VertxTestContext;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@DisplayName("Test the functionality of /insult endpoint")
+@ExtendWith(VertxExtension.class)
+public class InsultEndpointTest {
+
+  @Test
+  @Timeout(value = 5, timeUnit = TimeUnit.SECONDS)
+  @DisplayName("Deploy the MainVerticle and verify the response")
+  void testInsultEndpoint(Vertx vertx, VertxTestContext testContext) {
+    assertTrue(false);
+  }
+
+}
+----
+
+Run the test with your IDE or Maven.  Your test should fail, but if it doesn't ask one of the Red Hat guys for help.
+
+[source]
+----
+Failed tests:
+  InsultEndpointTest.testInsultEndpoint:23 expected: <true> but was: <false>
+
+Tests run: 2, Failures: 1, Errors: 0, Skipped: 0
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 4.460 s
+[INFO] Finished at: 2018-07-16T18:48:37-04:00
+[INFO] Final Memory: 23M/314M
+[INFO] ------------------------------------------------------------------------
+----
+
+== Thou reeky unchin-snouted flap-dragon!
+
+We will replicate the method from our first test, but this time we will call "/insult" and prepare to be offended by the result.  We could certainly add this method to the MainVerticleTest.  We aren't going to because early in my career a mentor suggested keeping class files small and readable.  Disk space isn't expensive and your co-workers will appreciate it.  I've considered it good advice.
+
+Once again if you are feeling confident you can try the code first, and if you aren't you can type in the below example.
+
+We need :
+. a Checkpoint that flags after our Verticle is deployed
+. a Checkpoint that flags after our insult has been verified
+. a WebClient to call our URL
+
+Here's the implementation:
+
+[source,java]
+----
+package io.vertx.example;
+
+import io.vertx.core.Vertx;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.codec.BodyCodec;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.Timeout;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@DisplayName("Test the functionality of the MainVerticle class")
+@ExtendWith(VertxExtension.class)
+public class MainVerticleTest {
+
+  @Test
+  @Timeout(value = 5, timeUnit = TimeUnit.SECONDS)
+  @DisplayName("Deploy the MainVerticle and verify the response")
+  void testMainVerticle(Vertx vertx, VertxTestContext testContext) {
+
+    WebClient webClient = WebClient.create(vertx);
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+    Checkpoint responseCheckpoint = testContext.checkpoint();
+
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+      deploymentCheckpoint.flag();
+
+      webClient.get(8080, "localhost", "/")
+        .as(BodyCodec.string())
+        .send(testContext.succeeding(resp -> {
+          testContext.verify(() -> {
+            assertThat(resp.statusCode()).isEqualTo(200);
+            assertThat(resp.body()).contains("Thou reeky unchin-snouted flap-dragon!");
+            responseCheckpoint.flag();
+          });
+        }));
+    }));
+  }
+}
+----
+
+Run the test in your IDE or with Maven.  It should fail.  We haven't implemented the insult code yet.
+
+== Eclipse Vert.x Web and the Vert.x Router
+
+We mentioned earlier that Eclipse Vert.x is a toolkit.  We currently have 3 Vert.x tools in our application (defined our pom.xml):  vertx-core, vertx-web-client, and vertx-junit5.  Let's add vertx-web.  Open up your pom.xml and add the following (you can of course add it anywhere in the <dependencies> section; I suggest line 39 below vertx-core):
+
+[source,xml]
+----
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web</artifactId>
+        </dependency>
+----
+
+=== The Vert.x Router
+
+Routers are a core component of Vert.x-Web. Vert.x Routers:
+* maintain zero or more Routes
+* take an HTTP request, find the first matching route for that request, and pass the request to that route
+
+A Route has a handler associated with it.  A Route receives the request and passes it to a handler that does something useful and then ends the Request or passes it along to another handler.
+
+=== Refactor
+Update the MainVerticle with the following code:
+
+[source,java]
+----
+package io.vertx.example;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.ext.web.Router;
+
+public class MainVerticle extends AbstractVerticle {
+
+    @Override
+    public void start(Future<Void> fut) {
+
+        Router router = Router.router(vertx);                             //1
+
+        router.route("/").handler(routingContext -> {                     //2
+            HttpServerResponse response = routingContext.response();      //3
+            response
+                    .setStatusCode(200)
+                    .putHeader("Content-Type", "text/html")
+                    .end("Hello from my first Vert.x application!");
+        });                                                               //4
+        vertx.createHttpServer()
+                .requestHandler(router::accept)                           //5
+                .listen(8080, result -> {
+                    if (result.succeeded()) {
+                        fut.complete();
+                    } else {
+                        fut.fail(result.cause());
+                    }
+                });
+    }
+
+}
+----
+. Create the Router to use in our Verticle
+. Create the route for our index
+. Handle the response inside this method the same way we were handling it before
+. Attach the Router we created to the HttpServer's requestHandler (instead of the URL like we did before)
+
+Run your tests in your IDE or from Maven.  The MainVerticleTest should pass (we have re-implemented the root url), and the InsultEndpointTest should fail.  If those aren't your results ask one of the Red Hat guys for help.
+
+[source]
+----
+Running io.vertx.example.MainVerticleTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.47 sec - in io.vertx.example.MainVerticleTest
+
+Results :
+
+Failed tests:
+  InsultEndpointTest.testInsultEndpoint:23 expected: <true> but was: <false>
+
+Tests run: 2, Failures: 1, Errors: 0, Skipped: 0
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 4.131 s
+[INFO] Finished at: 2018-07-16T19:35:26-04:00
+[INFO] Final Memory: 24M/359M
+[INFO] ------------------------------------------------------------------------
+----
+
+=== Green (Pass the test)
+
+We need to implement the "/insult" endpoint.  If you are feeling confident add a route for "/insult" that returns, "Thou reeky unchin-snouted flap-dragon!" 
+
+[source,java]
+----
+package io.vertx.example;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.ext.web.Router;
+
+public class MainVerticle extends AbstractVerticle {
+
+    @Override
+    public void start(Future<Void> fut) {
+
+        Router router = Router.router(vertx);
+
+        router.route("/").handler(routingContext -> {
+            HttpServerResponse response = routingContext.response();
+            response
+                    .setStatusCode(200)
+                    .putHeader("Content-Type", "text/html")
+                    .end("Hello from my first Vert.x application!");
+        });
+        router.route("/insult").handler(routingContext -> {                     //1
+            HttpServerResponse response = routingContext.response();
+            response
+                    .setStatusCode(200)
+                    .putHeader("Content-Type", "text/html")
+                    .end("Thou reeky unchin-snouted flap-dragon!");
+
+        });
+        vertx.createHttpServer()
+                .requestHandler(router::accept)
+                .listen(8080, result -> {
+                    if (result.succeeded()) {
+                        fut.complete();
+                    } else {
+                        fut.fail(result.cause());
+                    }
+                });
+    }
+}
+----
+. The new route (much like the other route)
+
+Run the tests again.  This time they should pass.  You should feel insulted.
+
+[source]
+----
+-------------------------------------------------------
+ T E S T S
+-------------------------------------------------------
+Running io.vertx.example.InsultEndpointTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.73 sec - in io.vertx.example.InsultEndpointTest
+Running io.vertx.example.MainVerticleTest
+status code verified
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 sec - in io.vertx.example.MainVerticleTest
+
+Results :
+
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 4.373 s
+[INFO] Finished at: 2018-07-16T19:42:22-04:00
+[INFO] Final Memory: 24M/379M
+[INFO] ------------------------------------------------------------------------
+----
