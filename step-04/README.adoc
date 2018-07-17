@@ -1,1 +1,24 @@
 == What About the Microservices?
+
+To this point we have implemented two Http endpoints using our Red/Green/Refactor method and been introduced to the vertx-core, vertx-web, vertx-web-client, and vertx-junit5 modules.  Its been fun, but this workshop is about Microservices.
+
+Microservices tutorials almost always include the following Martin Fowler quote (it might be a rule):
+
+[quotes]
+`The term "Microservice Architecture" has sprung up over the last few years to describe a particular way of designing software applications as suites of independently deployable services. While there is no precise definition of this architectural style, there are certain common characteristics around organization around business capability, automated deployment, intelligence in the endpoints, and decentralized control of languages and data.`
+[quotes]
+https://martinfowler.com/articles/microservices.html
+
+There is another quote about Microservices Architectures from Martin Fowler that is quoted less often:
+
+[quotes]
+`I'm wary of distribution and my default inclination is to prefer a monolithic design.`
+[quotes]
+https://martinfowler.com/articles/distributed-objects-microservices.html
+
+What does that guy know anyway?  Let's talk to some Microservices!
+
+=== Hoverfly
+
+
+
