@@ -1,24 +1,111 @@
-== What About the Microservices?
+== Externalizing Configuration
 
-To this point we have implemented two Http endpoints using our Red/Green/Refactor method and been introduced to the vertx-core, vertx-web, vertx-web-client, and vertx-junit5 modules.  Its been fun, but this workshop is about Microservices.
+To this point we have implemented two Http endpoints using our Red/Green/Refactor method and been introduced to the vertx-core, vertx-web, vertx-web-client, and vertx-junit5 modules.  We have tests that are successfully passing so we can safely make changes.  Our next step is to externalize the configuration of the MainVerticle.  
 
-Microservices tutorials almost always include the following Martin Fowler quote (it might be a rule):
+NOTE: In a real project this would probably be one of your first steps, but we thought it would be more fun to do some real work first.
 
-[quotes]
-`The term "Microservice Architecture" has sprung up over the last few years to describe a particular way of designing software applications as suites of independently deployable services. While there is no precise definition of this architectural style, there are certain common characteristics around organization around business capability, automated deployment, intelligence in the endpoints, and decentralized control of languages and data.`
-[quotes]
-https://martinfowler.com/articles/microservices.html
+==== Red : Create and Fail a Test
 
-There is another quote about Microservices Architectures from Martin Fowler that is quoted less often:
+Configuration is pretty basic functionality so let's add our next test to the MainVerticleTest class:
 
-[quotes]
-`I'm wary of distribution and my default inclination is to prefer a monolithic design.`
-[quotes]
-https://martinfowler.com/articles/distributed-objects-microservices.html
+[source,java]
+----
+  @Test
+  @Timeout(value = 5, timeUnit = TimeUnit.SECONDS)
+  @DisplayName("Deploy the MainVerticle and verify the configuration")
+  void testMainVerticleConfiguration(Vertx vertx, VertxTestContext testContext){
+    assertTrue(false);
+  }
+----
 
-What does that guy know anyway?  Let's talk to some Microservices!
+This test is of course designed to fail, so verify that by running it in your IDE or from Maven.  If for some reason it passes ask one of the Red Hat guys for help.
 
-=== Hoverfly
+Now that we know the test works we will add some real functionality.  Externalizing our configuration is going to introduce a couple of new Vert.x objects:
+* DeploymentOptions
+* JsonObject
+
+==== JsonObject
+
+The JsonObject class is a representation of a JSON object in Java (no surprises there.)  Unlike some other languages Java does not have a native understanding of JSON. To enable JSON to be used easily in Vert.x code we use this class to encapsulate the notion of a JSON object. Vert.x' implementation adheres to the RFC-7493 to support Temporal data types as well as binary data.
+
+You can probably guess what the DeploymentOptions class is used for.  In this case we will create it with a JsonObject containing our configuration parameters.
+
+IMPORTANT: You will rely heavily on the JsonObject class when developing with Eclipse Vert.x.  Vert.x' ability to seamlessly marshall and unmarshall Json is one of its' most powerful features. 
+
+Update the MainVerticleTest.testMainVerticleConfiguration method with the following code:
+
+[source,java]
+----
+import io.vertx.core.DeploymentOptions;                                                       //1
+import io.vertx.core.json.JsonObject;
+...
+
+  @Test
+  @Timeout(value = 5, timeUnit = TimeUnit.SECONDS)
+  @DisplayName("Deploy the MainVerticle and verify the configuration")
+  void testMainVerticleConfiguration(Vertx vertx, VertxTestContext testContext){
+    WebClient webClient = WebClient.create(vertx);
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+    Checkpoint responseCheckpoint = testContext.checkpoint();
+
+    DeploymentOptions options = new DeploymentOptions()
+            .setConfig(new JsonObject().put("http.port", 8081));                              //2
+
+    vertx.deployVerticle(new MainVerticle(), options, testContext.succeeding(id -> {          //3
+      deploymentCheckpoint.flag();
+
+      webClient.get(8081, "localhost", "/")                                                   //4                                  
+              .as(BodyCodec.string())
+              .send(testContext.succeeding(resp -> {
+                testContext.verify(() -> {
+                  assertThat(resp.statusCode()).isEqualTo(200);
+                  responseCheckpoint.flag();
+                });
+              }));
+    }));
+  }
+----
+. In case your IDE doesn't find the imports or you are a crazy person using vi or emacs you can add these manually
+. Create a DeploymentOpions class and pass in a JsonObject containing a value, "http.port"
+. Deploy our verticle using these options
+. Verify that our Verticle is bound to the correct port
+
+There is one other thing to add.  We are passing an instance of Vertx and VertxTestContext to each of our test methods.  The Vert.x JUnit 5 Extension manages the lifecycle of these objects creating and destroying new instances for each test.  However, our individual tests may execute before a previous method's Vert.x instance is still running which means "localhost" will already be bound.  We can solve this by using the JUnit 5 @AfterEach annotation:
+
+[source,java]
+----
+  @AfterEach
+  void cleanUp(Vertx vertx, VertxTestContext testContext){
+    vertx.close();
+  }
+----
+
+I like to put @BeforeEach and @AfterEach methods at the top of my class, but it can go anywhere.
+
+Run the test, which of course should fail.  If your test passes for some reason the Red Hat guys can help.
+
+[source]
+----
+io.netty.channel.AbstractChannel$AnnotatedConnectException: Connection refused: localhost/127.0.0.1:8081
+Caused by: java.net.ConnectException: Connection refused
+
+testMainVerticle(Vertx, VertxTestContext)  Time elapsed: 5.019 sec  <<< ERROR!
+java.util.concurrent.TimeoutException: The test execution timed out
 
 
+Results :
 
+Tests in error:
+  MainVerticleTest.testMainVerticle » Timeout The test execution timed out
+  MainVerticleTest.testMainVerticleConfiguration » AnnotatedConnect Connection r...
+
+Tests run: 3, Failures: 0, Errors: 2, Skipped: 0
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 9.886 s
+[INFO] Finished at: 2018-07-17T06:54:12-04:00
+[INFO] Final Memory: 25M/363M
+[INFO] ------------------------------------------------------------------------
+----
