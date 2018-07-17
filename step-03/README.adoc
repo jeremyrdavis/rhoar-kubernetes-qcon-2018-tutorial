@@ -1,3 +1,5 @@
+link:../outline/README.adoc[Main]
+
 = Step 3 : First Insult
 
 == Create a New Test

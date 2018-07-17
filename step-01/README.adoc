@@ -1,3 +1,5 @@
+link:../outline/README.adoc[Main]
+
 = Step 1 : Getting Started
 
 As you may have guessed Vert.x can be downloaded from the official site: https://vertx.io/download.  But you don't need to download Vert.x: Maven or Gradle will take of that for you.  The easiest way to get started with Eclipse Vert.x is create a project.

@@ -1,3 +1,5 @@
+link:../outline/README.adoc[Main]
+
 = Externalizing Configuration
 
 :toc:
