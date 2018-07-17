@@ -1,10 +1,14 @@
-== Externalizing Configuration
+= Externalizing Configuration
+
+:toc:
+
+:sectnums:
 
 To this point we have implemented two Http endpoints using our Red/Green/Refactor method and been introduced to the vertx-core, vertx-web, vertx-web-client, and vertx-junit5 modules.  We have tests that are successfully passing so we can safely make changes.  Our next step is to externalize the configuration of the MainVerticle.  
 
 NOTE: In a real project this would probably be one of your first steps, but we thought it would be more fun to do some real work first.
 
-==== Red : Create and Fail a Test
+== Create and Fail a Test (Red)
 
 Configuration is pretty basic functionality so let's add our next test to the MainVerticleTest class:
 
@@ -20,17 +24,19 @@ Configuration is pretty basic functionality so let's add our next test to the Ma
 
 This test is of course designed to fail, so verify that by running it in your IDE or from Maven.  If for some reason it passes ask one of the Red Hat guys for help.
 
+=== Adding DeploymentOptions
+
 Now that we know the test works we will add some real functionality.  Externalizing our configuration is going to introduce a couple of new Vert.x objects:
 * DeploymentOptions
 * JsonObject
-
-==== JsonObject
 
 The JsonObject class is a representation of a JSON object in Java (no surprises there.)  Unlike some other languages Java does not have a native understanding of JSON. To enable JSON to be used easily in Vert.x code we use this class to encapsulate the notion of a JSON object. Vert.x' implementation adheres to the RFC-7493 to support Temporal data types as well as binary data.
 
 You can probably guess what the DeploymentOptions class is used for.  In this case we will create it with a JsonObject containing our configuration parameters.
 
 IMPORTANT: You will rely heavily on the JsonObject class when developing with Eclipse Vert.x.  Vert.x' ability to seamlessly marshall and unmarshall Json is one of its' most powerful features. 
+
+== Update the Test
 
 Update the MainVerticleTest.testMainVerticleConfiguration method with the following code:
 
@@ -70,19 +76,9 @@ import io.vertx.core.json.JsonObject;
 . Deploy our verticle using these options
 . Verify that our Verticle is bound to the correct port
 
-There is one other thing to add.  We are passing an instance of Vertx and VertxTestContext to each of our test methods.  The Vert.x JUnit 5 Extension manages the lifecycle of these objects creating and destroying new instances for each test.  However, our individual tests may execute before a previous method's Vert.x instance is still running which means "localhost" will already be bound.  We can solve this by using the JUnit 5 @AfterEach annotation:
+=== Run (and fail) the test
 
-[source,java]
-----
-  @AfterEach
-  void cleanUp(Vertx vertx, VertxTestContext testContext){
-    vertx.close();
-  }
-----
-
-I like to put @BeforeEach and @AfterEach methods at the top of my class, but it can go anywhere.
-
-Run the test, which of course should fail.  If your test passes for some reason the Red Hat guys can help.
+Run the test, which of course should fail.  If your test passes for some reason the Red Hat guys can help.  You should see "Connection refused" in the output.
 
 [source]
 ----
@@ -107,5 +103,43 @@ Tests run: 3, Failures: 0, Errors: 2, Skipped: 0
 [INFO] Total time: 9.886 s
 [INFO] Finished at: 2018-07-17T06:54:12-04:00
 [INFO] Final Memory: 25M/363M
+[INFO] ------------------------------------------------------------------------
+----
+
+== Update MainVerticle (Green)
+
+Making MainVerticle get its' port from configuration is simple.  Update the creation of the Vert.x HttpServer method with the following:
+
+[source,java]
+----
+        vertx.createHttpServer()
+                .requestHandler(router::accept)
+                .listen(config().getInteger("http.port", 8080), result -> {              //1
+                    if (result.succeeded()) {
+                        fut.complete();
+                    } else {
+                        fut.fail(result.cause());
+                    }
+                });
+    }
+----
+. Instead of simply passing the port number we call config.getInteger with the name of the config parameter and a default to use in case the parameter is empty
+
+Your test should now pass.
+
+[source]
+----
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.145 sec - in io.vertx.example.MainVerticleTest
+
+Results :
+
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 4.821 s
+[INFO] Finished at: 2018-07-17T07:14:57-04:00
+[INFO] Final Memory: 26M/363M
 [INFO] ------------------------------------------------------------------------
 ----
