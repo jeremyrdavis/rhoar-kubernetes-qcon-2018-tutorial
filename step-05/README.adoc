@@ -1,0 +1,49 @@
+== What About the Microservices?
+
+To this point we have implemented two Http endpoints using our Red/Green/Refactor method and been introduced to the vertx-core, vertx-web, vertx-web-client, and vertx-junit5 modules.  Its been fun, but this workshop is about Microservices.
+
+Microservices tutorials almost always include the following Martin Fowler quote (it might be a rule):
+
+[quotes]
+`The term "Microservice Architecture" has sprung up over the last few years to describe a particular way of designing software applications as suites of independently deployable services. While there is no precise definition of this architectural style, there are certain common characteristics around organization around business capability, automated deployment, intelligence in the endpoints, and decentralized control of languages and data.`
+[quotes]
+https://martinfowler.com/articles/microservices.html
+
+There is another quote about Microservices Architectures from Martin Fowler that is quoted less often:
+
+[quotes]
+`I'm wary of distribution and my default inclination is to prefer a monolithic design.`
+[quotes]
+https://martinfowler.com/articles/distributed-objects-microservices.html
+
+What does that guy know anyway?  Let's talk to some Microservices!
+
+=== Hoverfly
+
+`Hoverfly is a lightweight, open source API simulation tool. Using Hoverfly, you can create realistic simulations of the APIs your application depends on.`
+https://github.com/SpectoLabs/hoverfly
+
+Hoverfly was written by SpectoLabs (https://specto.io/), and they offer support and a product, HoverFly Cloud.  Hoverfly allows us to mock the services that our class depends on. 
+
+==== Add the hoverfly dependency to our pom.xml
+
+Add the Hoverfly version information to the pom.xml in the <properties> section just below the <assertj-core.version> tag that we added earlier (line 22.)
+
+[source,xml]
+----
+<hoverfly.version>0.10.3</hoverfly.version>
+----
+
+Add the Hoverfly dependency to the pom.xml just in the testing section just below the AssertJ dependency (line 79.)
+
+[source,xml]
+----
+<dependency>
+    <groupId>io.specto</groupId>
+    <artifactId>hoverfly-java</artifactId>
+    <version>${hoverfly.version}</version>
+    <scope>test</scope>
+</dependency>
+----
+
+
